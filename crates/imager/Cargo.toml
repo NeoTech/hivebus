@@ -1,0 +1,27 @@
+[package]
+name = "imager"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "imager"
+path = "src/main.rs"
+
+[dependencies]
+proto      = { workspace = true }
+tokio      = { workspace = true }
+serde      = { workspace = true }
+bincode    = { workspace = true }
+toml       = { workspace = true }
+thiserror  = { workspace = true }
+anyhow     = { workspace = true }
+tracing    = { workspace = true }
+tracing-subscriber = { workspace = true }
+bytes      = { workspace = true }
+# Content addressing
+blake3     = "1"
+sha2       = "0.10"
+# Tar archive creation/extraction for LXC rootfs
+tar        = "0.4"
+flate2     = "1"
+zstd       = "0.13"

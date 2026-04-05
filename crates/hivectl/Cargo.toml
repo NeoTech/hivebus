@@ -1,0 +1,17 @@
+[package]
+name = "hivectl"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "TUI cluster inspector for subcluster hivebus"
+
+[[bin]]
+name = "sc-hivectl"
+path = "src/main.rs"
+
+[dependencies]
+proto     = { path = "../proto" }
+anyhow    = { workspace = true }
+
+ratatui   = "0.29"
+crossterm = "0.28"

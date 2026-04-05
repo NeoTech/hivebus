@@ -1,0 +1,42 @@
+[workspace]
+members = [
+    "crates/proto",
+    "crates/orchestrator",
+    "crates/netop",
+    "crates/hivebus",
+    "crates/imager",
+    "crates/netgate",
+    "crates/pxeboot",
+    "crates/hivectl",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+bincode = { version = "2", features = ["serde"] }
+toml = "0.8"
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
+
+# Networking / syscalls
+nix = { version = "0.29", features = ["net", "socket", "uio", "process", "mount", "sched", "user"] }
+bytes = "1"
+socket2 = { version = "0.5", features = ["all"] }
+
+# Cluster
+proto = { path = "crates/proto" }
