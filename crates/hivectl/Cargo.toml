@@ -6,7 +6,7 @@ license.workspace = true
 description = "TUI cluster inspector for hivebus hivebus"
 
 [[bin]]
-name = "sc-hivectl"
+name = "hv-hivectl"
 path = "src/main.rs"
 
 [dependencies]

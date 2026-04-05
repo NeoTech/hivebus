@@ -36,8 +36,8 @@ run_test() {
 }
 
 test_binaries_installed() {
-    c node1 "command -v sc-hivebus sc-netop sc-orchestrator sc-imager sc-netgate sc-pxeboot sc-hivectl" >/dev/null
-    c node2 "command -v sc-hivebus sc-hivectl" >/dev/null
+    c node1 "command -v hv-hivebus hv-netop hv-orchestrator hv-imager hv-netgate hv-pxeboot hv-hivectl" >/dev/null
+    c node2 "command -v hv-hivebus hv-hivectl" >/dev/null
 }
 
 test_cargo_check() {

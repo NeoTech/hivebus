@@ -167,23 +167,23 @@ log "Installing binaries to /usr/local/bin..."
 BIN_DIR="${PROJECT}/target/debug"
 for bin in hivebus netop orchestrator imager netgate pxeboot hivectl; do
     if [ -f "${BIN_DIR}/${bin}" ]; then
-        install -m 755 "${BIN_DIR}/${bin}" "/usr/local/bin/sc-${bin}"
+        install -m 755 "${BIN_DIR}/${bin}" "/usr/local/bin/hv-${bin}"
     else
         log "WARNING: ${bin} binary not found (build may have failed)"
     fi
 done
 
-# Package all sc-* binaries into seed.tar.gz so agent nodes can bootstrap
+# Package all hv-* binaries into seed.tar.gz so agent nodes can bootstrap
 # without a Rust compiler.  The archive is served by the HTTP unit below.
 log "Creating seed.tar.gz..."
 SEED_BINS=()
-for f in /usr/local/bin/sc-*; do [ -f "$f" ] && SEED_BINS+=("$(basename "$f")"); done
+for f in /usr/local/bin/hv-*; do [ -f "$f" ] && SEED_BINS+=("$(basename "$f")"); done
 if [ ${#SEED_BINS[@]} -gt 0 ]; then
     tar -czf /var/lib/hivebus/images/seed.tar.gz \
         -C /usr/local/bin "${SEED_BINS[@]}"
     log "Seed archive ready: $(du -sh /var/lib/hivebus/images/seed.tar.gz | cut -f1)"
 else
-    log "WARNING: no sc-* binaries found; seed.tar.gz not created"
+    log "WARNING: no hv-* binaries found; seed.tar.gz not created"
 fi
 
 # Minimal HTTP server so agent nodes can fetch the seed archive.
@@ -222,7 +222,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/sc-${bin} ${cfg}
+ExecStart=/usr/local/bin/hv-${bin} ${cfg}
 Restart=on-failure
 RestartSec=3
 Environment=RUST_LOG=info

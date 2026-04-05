@@ -11,7 +11,7 @@
 #        node_id = (hi << 8) | lo   (1..=65534, clamped to 2..255 for display)
 #   5. Pull the per-MAC iPXE script from pxeboot via TFTP and use it to
 #      discover the HTTP seed archive URL.
-#   6. Download seed.tar.gz and extract sc-* binaries to /usr/local/bin/.
+#   6. Download seed.tar.gz and extract hv-* binaries to /usr/local/bin/.
 #   7. Write /etc/hivebus/hivebus.toml, create systemd unit, start hivebus.
 #      hivebus broadcasts an ANNOUNCE — node1 logs "new hardware discovered".
 #
@@ -35,7 +35,7 @@ log "Installing runtime packages..."
 apt-get update -qq
 apt-get install -y -qq \
     curl \
-    isc-dhcp-client \
+    ihv-dhcp-client \
     iproute2 \
     nftables \
     socat \
@@ -149,10 +149,10 @@ curl -fS --retry 5 --retry-delay 2 \
 
 log "Extracting binaries to /usr/local/bin/..."
 tar -xzf "${SEED_TMP}/seed.tar.gz" -C /usr/local/bin/
-chmod 755 /usr/local/bin/sc-*
+chmod 755 /usr/local/bin/hv-*
 rm -rf "${SEED_TMP}"
 
-log "Installed: $(ls /usr/local/bin/sc-* | tr '\n' ' ')"
+log "Installed: $(ls /usr/local/bin/hv-* | tr '\n' ' ')"
 
 # ---------------------------------------------------------------------------
 # 7. Write configs
@@ -201,7 +201,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/sc-hivebus /etc/hivebus/hivebus.toml
+ExecStart=/usr/local/bin/hv-hivebus /etc/hivebus/hivebus.toml
 Restart=on-failure
 RestartSec=3
 Environment=RUST_LOG=info

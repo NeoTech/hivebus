@@ -32,13 +32,13 @@ and PXE boot over a private cluster network.
 | Crate | Binary | Port / Socket | Purpose |
 |---|---|---|---|
 | `proto` | _lib_ | — | Shared wire types; no protobuf; bincode v2 |
-| `hivebus` | `sc-hivebus` | UDP 7777, `/var/run/hivebus/hivebus.sock` | Heartbeat, failure detection, gossip, leader election |
-| `orchestrator` | `sc-orchestrator` | `/var/run/hivebus/orchestrator.sock` | KVM / LXC / containerd workload CRUD |
-| `netop` | `sc-netop` | `/var/run/hivebus/netop.sock` | nftables rules + virtual interface reconciliation |
-| `imager` | `sc-imager` | TCP 7779, `/var/run/hivebus/imager.sock` | BLAKE3-hashed P2P image chunk store |
-| `netgate` | `sc-netgate` | UDP/TCP 5353, `/var/run/hivebus/netgate.sock` | Internal DNS + L4 TCP proxy |
-| `pxeboot` | `sc-pxeboot` | UDP 67/68 + TFTP 69, `/var/run/hivebus/pxeboot.sock` | DHCP + TFTP + generated per-MAC iPXE scripts |
-| `hivectl` | `sc-hivectl` | _(reads hivebus socket)_ | TUI cluster inspector — run on any node |
+| `hivebus` | `hv-hivebus` | UDP 7777, `/var/run/hivebus/hivebus.sock` | Heartbeat, failure detection, gossip, leader election |
+| `orchestrator` | `hv-orchestrator` | `/var/run/hivebus/orchestrator.sock` | KVM / LXC / containerd workload CRUD |
+| `netop` | `hv-netop` | `/var/run/hivebus/netop.sock` | nftables rules + virtual interface reconciliation |
+| `imager` | `hv-imager` | TCP 7779, `/var/run/hivebus/imager.sock` | BLAKE3-hashed P2P image chunk store |
+| `netgate` | `hv-netgate` | UDP/TCP 5353, `/var/run/hivebus/netgate.sock` | Internal DNS + L4 TCP proxy |
+| `pxeboot` | `hv-pxeboot` | UDP 67/68 + TFTP 69, `/var/run/hivebus/pxeboot.sock` | DHCP + TFTP + generated per-MAC iPXE scripts |
+| `hivectl` | `hv-hivectl` | _(reads hivebus socket)_ | TUI cluster inspector — run on any node |
 
 All daemons share a common control-plane framing over Unix sockets:
 ```
@@ -70,7 +70,7 @@ hivebus/
     ├── imager/
     ├── netgate/
     ├── pxeboot/
-    └── hivectl/            ← TUI cluster inspector (sc-hivectl)
+    └── hivectl/            ← TUI cluster inspector (hv-hivectl)
 ```
 
 ---
@@ -149,7 +149,7 @@ vagrant up node2 node3
 2. Reads the `eth1` MAC address
 3. Derives `NODE_ID` with the same XOR fold as `proto::node_id_from_mac`
 4. Pulls `scripts/<mac>.ipxe` from node1 over TFTP and extracts the seed archive URL
-5. Downloads `seed.tar.gz` and extracts `sc-*` binaries
+5. Downloads `seed.tar.gz` and extracts `hv-*` binaries
 6. Writes `/etc/hivebus/hivebus.toml` with the MAC-derived ID and DHCP IP
 7. Starts `hivebus-hivebus` — broadcasts an ANNOUNCE on UDP 7777
 
@@ -171,7 +171,7 @@ archive so agents pick up new binaries on next provision:
 vagrant ssh node1 -- "
     cd /opt/hivebus && cargo build --workspace &&
     tar -czf /var/lib/hivebus/images/seed.tar.gz \
-        -C /usr/local/bin \$(ls /usr/local/bin/sc-*)
+        -C /usr/local/bin \$(ls /usr/local/bin/hv-*)
 "
 # re-provision agents to pull the new archive
 vagrant provision node2 node3
@@ -208,7 +208,7 @@ vagrant halt          # suspend VMs (keep disk state)
 vagrant destroy -f    # delete VMs completely
 ```
 
-### `sc-hivectl` — TUI cluster inspector
+### `hv-hivectl` — TUI cluster inspector
 
 Run on any node that has a hivebus socket.  No arguments needed on-node; pass
 the socket path when connecting remotely via forwarded socket.
@@ -217,10 +217,10 @@ the socket path when connecting remotely via forwarded socket.
 vagrant ssh node1
 
 # Connect to local hivebus socket
-sc-hivectl
+hv-hivectl
 
 # Explicit socket path
-sc-hivectl /var/run/hivebus/hivebus.sock
+hv-hivectl /var/run/hivebus/hivebus.sock
 ```
 
 ```
@@ -253,7 +253,7 @@ Tests performed:
 
 | Test | What it checks |
 |---|---|
-| `binaries_installed` | All `sc-*` binaries present on each node |
+| `binaries_installed` | All `hv-*` binaries present on each node |
 | `cargo_check` | Workspace compiles without errors |
 | `proto_unit_tests` | `cargo test -p proto` passes |
 | `cluster_network_reachability` | node1 can ping agent nodes on `10.42.0.0/24` |
@@ -293,7 +293,7 @@ cargo test -p proto
 cargo build --workspace --release
 
 # Run hivebus on the cluster interface
-RUST_LOG=info sudo ./target/release/sc-hivebus \
+RUST_LOG=info sudo ./target/release/hv-hivebus \
     --config /etc/hivebus/hivebus.toml
 ```
 

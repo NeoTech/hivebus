@@ -1,8 +1,8 @@
 //! hivectl — TUI cluster inspector for hivebus hivebus.
 //!
 //! Usage:
-//!   sc-hivectl                              # connect to default socket
-//!   sc-hivectl /var/run/hivebus/hivebus.sock
+//!   hv-hivectl                              # connect to default socket
+//!   hv-hivectl /var/run/hivebus/hivebus.sock
 //!
 //! Keys:
 //!   q / Ctrl-C   quit
@@ -403,7 +403,7 @@ fn centered_rect(pct_w: u16, pct_h: u16, r: Rect) -> Rect {
 
 #[cfg(not(unix))]
 fn main() {
-    eprintln!("sc-hivectl is only supported on Unix/Linux");
+    eprintln!("hv-hivectl is only supported on Unix/Linux");
     std::process::exit(1);
 }
 
