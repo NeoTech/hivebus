@@ -12,7 +12,7 @@
 #   5. Pull the per-MAC iPXE script from pxeboot via TFTP and use it to
 #      discover the HTTP seed archive URL.
 #   6. Download seed.tar.gz and extract sc-* binaries to /usr/local/bin/.
-#   7. Write /etc/subcluster/hivebus.toml, create systemd unit, start hivebus.
+#   7. Write /etc/hivebus/hivebus.toml, create systemd unit, start hivebus.
 #      hivebus broadcasts an ANNOUNCE — node1 logs "new hardware discovered".
 #
 # Environment variables set by Vagrantfile:
@@ -48,11 +48,11 @@ systemctl enable nftables || true
 # ---------------------------------------------------------------------------
 # 2. Runtime directories
 # ---------------------------------------------------------------------------
-install -d -m 755 /etc/subcluster
-install -d -m 755 /var/run/subcluster
-install -d -m 755 /var/lib/subcluster/images
-install -d -m 755 /var/lib/subcluster/tftp
-install -d -m 755 /var/lib/subcluster/lxc
+install -d -m 755 /etc/hivebus
+install -d -m 755 /var/run/hivebus
+install -d -m 755 /var/lib/hivebus/images
+install -d -m 755 /var/lib/hivebus/tftp
+install -d -m 755 /var/lib/hivebus/lxc
 
 # ---------------------------------------------------------------------------
 # 3. Wait for DHCP lease on cluster interface
@@ -158,7 +158,7 @@ log "Installed: $(ls /usr/local/bin/sc-* | tr '\n' ' ')"
 # 7. Write configs
 # ---------------------------------------------------------------------------
 log "Writing hivebus config..."
-cat > /etc/subcluster/hivebus.toml << EOF
+cat > /etc/hivebus/hivebus.toml << EOF
 cluster_addr = "${CLUSTER_IP}"
 cluster_iface = "${CLUSTER_IFACE}"
 node_id = ${NODE_ID}
@@ -169,39 +169,39 @@ dead_secs = 30
 EOF
 
 # Minimal configs for other daemons (not started automatically on agents).
-cat > /etc/subcluster/imager.toml << EOF
-store_dir = "/var/lib/subcluster/images"
+cat > /etc/hivebus/imager.toml << EOF
+store_dir = "/var/lib/hivebus/images"
 chunk_port = 7779
 EOF
 
-cat > /etc/subcluster/netop.toml << EOF
+cat > /etc/hivebus/netop.toml << EOF
 reconcile_secs = 5
 EOF
 
-cat > /etc/subcluster/netgate.toml << EOF
+cat > /etc/hivebus/netgate.toml << EOF
 dns_addr = "${SEED_IP}:5353"
 domain = "cluster.internal"
 EOF
 
-cat > /etc/subcluster/orchestrator.toml << EOF
+cat > /etc/hivebus/orchestrator.toml << EOF
 containerd_socket = "/run/containerd/containerd.sock"
-cgroup_parent = "/subcluster"
-image_dir = "/var/lib/subcluster/images"
+cgroup_parent = "/hivebus"
+image_dir = "/var/lib/hivebus/images"
 EOF
 
 # ---------------------------------------------------------------------------
 # 8. Systemd unit + start hivebus
 # ---------------------------------------------------------------------------
 log "Installing hivebus systemd unit..."
-cat > /etc/systemd/system/subcluster-hivebus.service << 'UNIT'
+cat > /etc/systemd/system/hivebus-hivebus.service << 'UNIT'
 [Unit]
-Description=subcluster hivebus
+Description=hivebus hivebus
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/sc-hivebus /etc/subcluster/hivebus.toml
+ExecStart=/usr/local/bin/sc-hivebus /etc/hivebus/hivebus.toml
 Restart=on-failure
 RestartSec=3
 Environment=RUST_LOG=info
@@ -211,8 +211,8 @@ WantedBy=multi-user.target
 UNIT
 
 systemctl daemon-reload
-systemctl enable --now subcluster-hivebus
-systemctl is-active --quiet subcluster-hivebus
+systemctl enable --now hivebus-hivebus
+systemctl is-active --quiet hivebus-hivebus
 
 log "Agent ${HOSTNAME} (${CLUSTER_IP}, node_id=${NODE_ID}) joined cluster"
 log "Node1 hivebus should now log: new hardware discovered  mac=${MAC_RAW}  node_id=${NODE_ID}"

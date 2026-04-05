@@ -68,7 +68,7 @@ struct Config {
     lease_secs: u32,
 }
 fn default_mask() -> Ipv4Addr { "255.255.255.0".parse().unwrap() }
-fn default_tftp_root() -> String { "/var/lib/subcluster/tftp".into() }
+fn default_tftp_root() -> String { "/var/lib/hivebus/tftp".into() }
 fn default_boot_file() -> String { "ipxe.efi".into() }
 fn default_lease_secs() -> u32 { 3600 }
 
@@ -125,7 +125,7 @@ fn render_ipxe_script(cfg: &Config, mac: &Mac, entry: &BootEntry) -> String {
 
     format!(
         "#!ipxe\n\
-echo subcluster bootstrap for {} ({})\n\
+echo hivebus bootstrap for {} ({})\n\
 set seed-url {}\n\
 chain {}\n",
         entry.hostname,
@@ -658,7 +658,7 @@ async fn main() -> Result<()> {
         .init();
 
     let config_path = std::env::args().nth(1)
-        .unwrap_or_else(|| "/etc/subcluster/pxeboot.toml".into());
+        .unwrap_or_else(|| "/etc/hivebus/pxeboot.toml".into());
     let cfg = Arc::new(Config::load(&config_path)?);
 
     std::fs::create_dir_all(&cfg.tftp_root)?;

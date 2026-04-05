@@ -408,7 +408,7 @@ async fn control_plane_task(
         std::fs::create_dir_all(parent)?;
     }
     let listener = UnixListener::bind(p)?;
-    // Only root/subcluster group may access.
+    // Only root/hivebus group may access.
     std::fs::set_permissions(p, std::fs::Permissions::from_mode(0o660))?;
     info!("control plane listening on {socket_path}");
 
@@ -497,7 +497,7 @@ async fn main() -> Result<()> {
         .init();
 
     let config_path = std::env::args().nth(1)
-        .unwrap_or_else(|| "/etc/subcluster/hivebus.toml".into());
+        .unwrap_or_else(|| "/etc/hivebus/hivebus.toml".into());
     let cfg = Config::load(&config_path)?;
 
     let hostname = cfg.hostname.clone().unwrap_or_else(|| {

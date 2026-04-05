@@ -1,4 +1,4 @@
-# subcluster
+# hivebus
 
 A Rust-native micro-clustering platform. Six lightweight daemons coordinate
 node discovery, workload orchestration, networking, image distribution, DNS,
@@ -16,7 +16,7 @@ and PXE boot over a private cluster network.
  │  hivebus  ← UDP :7777              │  master / membership
  │  imager   ← TCP :7779              │  binary chunk store
  └───────────────┬──────────────────────┘
-                 │  subcluster-net (10.42.0.0/24, VirtualBox intnet)
+                 │  hivebus-net (10.42.0.0/24, VirtualBox intnet)
                  │  no external DHCP — pxeboot is sole server
        ┌─────────┴──────────┐
        ▼                    ▼
@@ -32,12 +32,12 @@ and PXE boot over a private cluster network.
 | Crate | Binary | Port / Socket | Purpose |
 |---|---|---|---|
 | `proto` | _lib_ | — | Shared wire types; no protobuf; bincode v2 |
-| `hivebus` | `sc-hivebus` | UDP 7777, `/var/run/subcluster/hivebus.sock` | Heartbeat, failure detection, gossip, leader election |
-| `orchestrator` | `sc-orchestrator` | `/var/run/subcluster/orchestrator.sock` | KVM / LXC / containerd workload CRUD |
-| `netop` | `sc-netop` | `/var/run/subcluster/netop.sock` | nftables rules + virtual interface reconciliation |
-| `imager` | `sc-imager` | TCP 7779, `/var/run/subcluster/imager.sock` | BLAKE3-hashed P2P image chunk store |
-| `netgate` | `sc-netgate` | UDP/TCP 5353, `/var/run/subcluster/netgate.sock` | Internal DNS + L4 TCP proxy |
-| `pxeboot` | `sc-pxeboot` | UDP 67/68 + TFTP 69, `/var/run/subcluster/pxeboot.sock` | DHCP + TFTP + generated per-MAC iPXE scripts |
+| `hivebus` | `sc-hivebus` | UDP 7777, `/var/run/hivebus/hivebus.sock` | Heartbeat, failure detection, gossip, leader election |
+| `orchestrator` | `sc-orchestrator` | `/var/run/hivebus/orchestrator.sock` | KVM / LXC / containerd workload CRUD |
+| `netop` | `sc-netop` | `/var/run/hivebus/netop.sock` | nftables rules + virtual interface reconciliation |
+| `imager` | `sc-imager` | TCP 7779, `/var/run/hivebus/imager.sock` | BLAKE3-hashed P2P image chunk store |
+| `netgate` | `sc-netgate` | UDP/TCP 5353, `/var/run/hivebus/netgate.sock` | Internal DNS + L4 TCP proxy |
+| `pxeboot` | `sc-pxeboot` | UDP 67/68 + TFTP 69, `/var/run/hivebus/pxeboot.sock` | DHCP + TFTP + generated per-MAC iPXE scripts |
 | `hivectl` | `sc-hivectl` | _(reads hivebus socket)_ | TUI cluster inspector — run on any node |
 
 All daemons share a common control-plane framing over Unix sockets:
@@ -55,7 +55,7 @@ magic(0xCA,1B) | type_seq(1B: hi4=MsgType, lo4=seq) | node_id(2B BE) | payload(b
 ## Repository layout
 
 ```
-subcluster/
+hivebus/
 ├── Cargo.toml              ← workspace root (resolver = "2", shared deps)
 ├── Vagrantfile             ← seed + agent PXE-boot topology
 ├── vagrant/
@@ -112,7 +112,7 @@ platform works on real hardware:
                                         node1 logs "new hardware discovered"
 ```
 
-The cluster intnet (`subcluster-net`, `10.42.0.0/24`) has no host-side DHCP
+The cluster intnet (`hivebus-net`, `10.42.0.0/24`) has no host-side DHCP
 server — `pxeboot` on node1 is the sole DHCP authority, exactly as it would
 be on bare-metal.
 
@@ -132,7 +132,7 @@ vagrant up node1
 Verify the seed is ready before starting agents:
 
 ```bash
-vagrant ssh node1 -- "systemctl is-active subcluster-pxeboot subcluster-seed-http subcluster-hivebus"
+vagrant ssh node1 -- "systemctl is-active hivebus-pxeboot hivebus-seed-http hivebus-hivebus"
 vagrant ssh node1 -- "curl -sI http://10.42.0.11:7780/seed.tar.gz | head -2"
 vagrant ssh node2 -- "mac=\$(cat /sys/class/net/eth1/address); tmp=\$(mktemp); tftp 10.42.0.11 -m binary -c get scripts/\${mac}.ipxe \"\$tmp\" && cat \"\$tmp\""
 ```
@@ -150,13 +150,13 @@ vagrant up node2 node3
 3. Derives `NODE_ID` with the same XOR fold as `proto::node_id_from_mac`
 4. Pulls `scripts/<mac>.ipxe` from node1 over TFTP and extracts the seed archive URL
 5. Downloads `seed.tar.gz` and extracts `sc-*` binaries
-6. Writes `/etc/subcluster/hivebus.toml` with the MAC-derived ID and DHCP IP
-7. Starts `subcluster-hivebus` — broadcasts an ANNOUNCE on UDP 7777
+6. Writes `/etc/hivebus/hivebus.toml` with the MAC-derived ID and DHCP IP
+7. Starts `hivebus-hivebus` — broadcasts an ANNOUNCE on UDP 7777
 
 Watch node1 log new members joining:
 
 ```bash
-vagrant ssh node1 -- "journalctl -u subcluster-hivebus --no-pager -n 30"
+vagrant ssh node1 -- "journalctl -u hivebus-hivebus --no-pager -n 30"
 # look for:
 #   new hardware discovered via DHCP  mac=…  node_id=…
 #   node announced  node_id=…  ip=…
@@ -164,13 +164,13 @@ vagrant ssh node1 -- "journalctl -u subcluster-hivebus --no-pager -n 30"
 
 ### Rebuilding after code changes
 
-Source is synced to `/opt/subcluster` on node1. Rebuild and refresh the seed
+Source is synced to `/opt/hivebus` on node1. Rebuild and refresh the seed
 archive so agents pick up new binaries on next provision:
 
 ```bash
 vagrant ssh node1 -- "
-    cd /opt/subcluster && cargo build --workspace &&
-    tar -czf /var/lib/subcluster/images/seed.tar.gz \
+    cd /opt/hivebus && cargo build --workspace &&
+    tar -czf /var/lib/hivebus/images/seed.tar.gz \
         -C /usr/local/bin \$(ls /usr/local/bin/sc-*)
 "
 # re-provision agents to pull the new archive
@@ -188,17 +188,17 @@ vagrant provision node1
 ```bash
 vagrant ssh node1
 
-sudo systemctl status  subcluster-hivebus
-sudo journalctl -fu    subcluster-hivebus
-sudo journalctl -fu    subcluster-pxeboot
+sudo systemctl status  hivebus-hivebus
+sudo journalctl -fu    hivebus-hivebus
+sudo journalctl -fu    hivebus-pxeboot
 
 # Inspect generated TFTP assets
-ls -R /var/lib/subcluster/tftp
+ls -R /var/lib/hivebus/tftp
 
 # Optional daemons (not auto-started)
-sudo systemctl start subcluster-netop
-sudo systemctl start subcluster-orchestrator
-sudo systemctl start subcluster-netgate
+sudo systemctl start hivebus-netop
+sudo systemctl start hivebus-orchestrator
+sudo systemctl start hivebus-netgate
 ```
 
 ### Tear down
@@ -220,12 +220,12 @@ vagrant ssh node1
 sc-hivectl
 
 # Explicit socket path
-sc-hivectl /var/run/subcluster/hivebus.sock
+sc-hivectl /var/run/hivebus/hivebus.sock
 ```
 
 ```
-╔═ subcluster hivectl ══════════════════════════════════════════════════════╗
-║ ✔  socket: /var/run/subcluster/hivebus.sock   master: node1 (1)           ║
+╔═ hivebus hivectl ══════════════════════════════════════════════════════╗
+║ ✔  socket: /var/run/hivebus/hivebus.sock   master: node1 (1)           ║
 ║    nodes: 3/3 alive   updated 0s ago                                       ║
 ╠═ nodes ═══════════════════════════════════════════════════════════════════╣
 ║ NODE ID  HOSTNAME         ADDRESS                STATE      ★   LAST SEEN ║
@@ -258,11 +258,11 @@ Tests performed:
 | `proto_unit_tests` | `cargo test -p proto` passes |
 | `cluster_network_reachability` | node1 can ping agent nodes on `10.42.0.0/24` |
 | `seed_http_smoke` | Agent can reach `seed.tar.gz` over HTTP |
-| `pxeboot_running_smoke` | `subcluster-pxeboot` systemd unit is active on node1 |
+| `pxeboot_running_smoke` | `hivebus-pxeboot` systemd unit is active on node1 |
 | `pxeboot_default_script_smoke` | Agent can fetch `default.ipxe` over TFTP |
 | `pxeboot_mac_script_smoke` | Agent can fetch its generated `scripts/<mac>.ipxe` over TFTP |
-| `hivebus_running` | `subcluster-hivebus` systemd unit active on all 3 nodes |
-| `hivebus_socket` | Control socket `/var/run/subcluster/hivebus.sock` exists |
+| `hivebus_running` | `hivebus-hivebus` systemd unit active on all 3 nodes |
+| `hivebus_socket` | Control socket `/var/run/hivebus/hivebus.sock` exists |
 | `hivebus_control_socket_smoke` | socat can connect to the control socket |
 | `hivebus_discovery_3nodes` | node1 log shows announce events from peer nodes |
 | `orchestrator_socket_smoke` | Orchestrator control socket present after manual start |
@@ -294,16 +294,16 @@ cargo build --workspace --release
 
 # Run hivebus on the cluster interface
 RUST_LOG=info sudo ./target/release/sc-hivebus \
-    --config /etc/subcluster/hivebus.toml
+    --config /etc/hivebus/hivebus.toml
 ```
 
 ### Config files
 
-Each daemon reads a TOML config from `/etc/subcluster/<name>.toml`.
+Each daemon reads a TOML config from `/etc/hivebus/<name>.toml`.
 Provision.sh writes these automatically in Vagrant.  For native dev, create
 them manually:
 
-**`/etc/subcluster/hivebus.toml`**
+**`/etc/hivebus/hivebus.toml`**
 ```toml
 cluster_addr   = "10.42.0.11"
 cluster_iface  = "eth1"
@@ -314,24 +314,24 @@ suspect_misses = 3
 dead_secs      = 30
 ```
 
-**`/etc/subcluster/pxeboot.toml`**
+**`/etc/hivebus/pxeboot.toml`**
 ```toml
 server_ip   = "10.42.0.11"
 iface       = "eth1"
 pool_start  = "10.42.0.100"
 pool_end    = "10.42.0.200"
-tftp_root   = "/var/lib/subcluster/tftp"
+tftp_root   = "/var/lib/hivebus/tftp"
 boot_file   = "undionly.kpxe"
 seed_url    = "http://10.42.0.11:7780/seed.tar.gz"
 ```
 
-**`/etc/subcluster/imager.toml`**
+**`/etc/hivebus/imager.toml`**
 ```toml
-store_dir  = "/var/lib/subcluster/images"
+store_dir  = "/var/lib/hivebus/images"
 chunk_port = 7779
 ```
 
-**`/etc/subcluster/netgate.toml`**
+**`/etc/hivebus/netgate.toml`**
 ```toml
 dns_addr = "10.42.0.11:5353"
 domain   = "cluster.internal"

@@ -53,8 +53,8 @@ impl Default for Config {
 }
 
 fn default_containerd_sock() -> String { "/run/containerd/containerd.sock".into() }
-fn default_cgroup_parent() -> String { "/subcluster".into() }
-fn default_image_dir() -> String { "/var/lib/subcluster/images".into() }
+fn default_cgroup_parent() -> String { "/hivebus".into() }
+fn default_image_dir() -> String { "/var/lib/hivebus/images".into() }
 
 impl Config {
     fn load(path: &str) -> Result<Self> {
@@ -128,7 +128,7 @@ mod lxc_backend {
     pub fn create_container(id: &str, rootfs: &str) -> Result<()> {
         info!(id, rootfs, "LXC container create (stub)");
         // TODO:
-        // 1. Unpack rootfs tarball via `tar` crate into /var/lib/subcluster/lxc/<id>/
+        // 1. Unpack rootfs tarball via `tar` crate into /var/lib/hivebus/lxc/<id>/
         // 2. Fork child with nix::sched::clone():
         //      CLONE_NEWPID | CLONE_NEWNET | CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWIPC
         // 3. pivot_root(2) into container rootfs
@@ -253,7 +253,7 @@ async fn main() -> Result<()> {
         .init();
 
     let config_path = std::env::args().nth(1)
-        .unwrap_or_else(|| "/etc/subcluster/orchestrator.toml".into());
+        .unwrap_or_else(|| "/etc/hivebus/orchestrator.toml".into());
     let cfg = std::sync::Arc::new(Config::load(&config_path)?);
 
     #[cfg(target_os = "linux")]

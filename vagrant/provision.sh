@@ -25,7 +25,7 @@ NODE_ID="${NODE_ID:-1}"
 CLUSTER_IP="${CLUSTER_IP:-10.42.0.11}"
 CLUSTER_IFACE="${CLUSTER_IFACE:-eth1}"
 SEED_IP="${SEED_IP:-10.42.0.11}"
-PROJECT="/opt/subcluster"
+PROJECT="/opt/hivebus"
 
 log() { echo "[provision] $*"; }
 
@@ -75,12 +75,12 @@ export PATH="/home/vagrant/.cargo/bin:$PATH"
 # 3. Runtime directories
 # ---------------------------------------------------------------------------
 log "Creating runtime directories..."
-install -d -m 755 /etc/subcluster
-install -d -m 755 /var/run/subcluster
-install -d -m 755 /var/lib/subcluster/images
-install -d -m 755 /var/lib/subcluster/tftp
-install -d -m 755 /var/lib/subcluster/tftp/scripts
-install -d -m 755 /var/lib/subcluster/lxc
+install -d -m 755 /etc/hivebus
+install -d -m 755 /var/run/hivebus
+install -d -m 755 /var/lib/hivebus/images
+install -d -m 755 /var/lib/hivebus/tftp
+install -d -m 755 /var/lib/hivebus/tftp/scripts
+install -d -m 755 /var/lib/hivebus/lxc
 
 # ---------------------------------------------------------------------------
 # 3.5. Boot artifacts for pxeboot
@@ -88,17 +88,17 @@ install -d -m 755 /var/lib/subcluster/lxc
 log "Staging PXE/TFTP boot artifacts..."
 for artifact in undionly.kpxe ipxe.efi; do
     if curl -fsSL --retry 3 --retry-delay 2 \
-        -o "/var/lib/subcluster/tftp/${artifact}" \
+        -o "/var/lib/hivebus/tftp/${artifact}" \
         "https://boot.ipxe.org/${artifact}"; then
-        chmod 444 "/var/lib/subcluster/tftp/${artifact}"
+        chmod 444 "/var/lib/hivebus/tftp/${artifact}"
     else
         log "WARNING: could not download ${artifact} from boot.ipxe.org"
     fi
 done
 
-cat > /var/lib/subcluster/tftp/default.ipxe << EOF
+cat > /var/lib/hivebus/tftp/default.ipxe << EOF
 #!ipxe
-echo subcluster default bootstrap
+echo hivebus default bootstrap
 chain http://${SEED_IP}:7780/seed.tar.gz
 EOF
 
@@ -107,7 +107,7 @@ EOF
 # ---------------------------------------------------------------------------
 log "Writing node configs (NODE_ID=${NODE_ID})..."
 
-cat > /etc/subcluster/hivebus.toml << EOF
+cat > /etc/hivebus/hivebus.toml << EOF
 cluster_addr = "${CLUSTER_IP}"
 cluster_iface = "${CLUSTER_IFACE}"
 node_id = ${NODE_ID}
@@ -117,34 +117,34 @@ suspect_misses = 3
 dead_secs = 30
 EOF
 
-cat > /etc/subcluster/netop.toml << EOF
+cat > /etc/hivebus/netop.toml << EOF
 reconcile_secs = 5
 EOF
 
-cat > /etc/subcluster/imager.toml << EOF
-store_dir = "/var/lib/subcluster/images"
+cat > /etc/hivebus/imager.toml << EOF
+store_dir = "/var/lib/hivebus/images"
 chunk_port = 7779
 EOF
 
-cat > /etc/subcluster/netgate.toml << EOF
+cat > /etc/hivebus/netgate.toml << EOF
 dns_addr = "${CLUSTER_IP}:5353"
 domain = "cluster.internal"
 EOF
 
-cat > /etc/subcluster/orchestrator.toml << EOF
+cat > /etc/hivebus/orchestrator.toml << EOF
 containerd_socket = "/run/containerd/containerd.sock"
-cgroup_parent = "/subcluster"
-image_dir = "/var/lib/subcluster/images"
+cgroup_parent = "/hivebus"
+image_dir = "/var/lib/hivebus/images"
 EOF
 
 # pxeboot is the sole DHCP server on the cluster intnet.  It must be running
 # before agent nodes are brought up with `vagrant up node2 node3`.
-cat > /etc/subcluster/pxeboot.toml << EOF
+cat > /etc/hivebus/pxeboot.toml << EOF
 server_ip  = "${SEED_IP}"
 iface      = "${CLUSTER_IFACE}"
 pool_start = "10.42.0.100"
 pool_end   = "10.42.0.200"
-tftp_root  = "/var/lib/subcluster/tftp"
+tftp_root  = "/var/lib/hivebus/tftp"
 boot_file  = "undionly.kpxe"
 seed_url   = "http://${SEED_IP}:7780/seed.tar.gz"
 EOF
@@ -152,11 +152,11 @@ EOF
 # ---------------------------------------------------------------------------
 # 5. Build all crates
 # ---------------------------------------------------------------------------
-log "Building subcluster workspace..."
+log "Building hivebus workspace..."
 cd "${PROJECT}"
 sudo -u vagrant bash -c "
     export PATH=/home/vagrant/.cargo/bin:\$PATH
-    cd /opt/subcluster
+    cd /opt/hivebus
     cargo build --workspace 2>&1
 "
 
@@ -179,24 +179,24 @@ log "Creating seed.tar.gz..."
 SEED_BINS=()
 for f in /usr/local/bin/sc-*; do [ -f "$f" ] && SEED_BINS+=("$(basename "$f")"); done
 if [ ${#SEED_BINS[@]} -gt 0 ]; then
-    tar -czf /var/lib/subcluster/images/seed.tar.gz \
+    tar -czf /var/lib/hivebus/images/seed.tar.gz \
         -C /usr/local/bin "${SEED_BINS[@]}"
-    log "Seed archive ready: $(du -sh /var/lib/subcluster/images/seed.tar.gz | cut -f1)"
+    log "Seed archive ready: $(du -sh /var/lib/hivebus/images/seed.tar.gz | cut -f1)"
 else
     log "WARNING: no sc-* binaries found; seed.tar.gz not created"
 fi
 
 # Minimal HTTP server so agent nodes can fetch the seed archive.
 # python3 ships with ubuntu/jammy64.
-cat > /etc/systemd/system/subcluster-seed-http.service << 'UNIT'
+cat > /etc/systemd/system/hivebus-seed-http.service << 'UNIT'
 [Unit]
-Description=subcluster seed HTTP server (:7780)
+Description=hivebus seed HTTP server (:7780)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/var/lib/subcluster/images
+WorkingDirectory=/var/lib/hivebus/images
 ExecStart=/usr/bin/python3 -m http.server 7780 --bind 0.0.0.0
 Restart=on-failure
 RestartSec=3
@@ -214,9 +214,9 @@ write_unit() {
     local name="$1"
     local bin="$2"
     local cfg="$3"
-    cat > "/etc/systemd/system/subcluster-${name}.service" << EOF
+    cat > "/etc/systemd/system/hivebus-${name}.service" << EOF
 [Unit]
-Description=subcluster ${name}
+Description=hivebus ${name}
 After=network-online.target
 Wants=network-online.target
 
@@ -232,23 +232,23 @@ WantedBy=multi-user.target
 EOF
 }
 
-write_unit "hivebus"      "hivebus"      "/etc/subcluster/hivebus.toml"
-write_unit "netop"        "netop"        "/etc/subcluster/netop.toml"
-write_unit "orchestrator" "orchestrator" "/etc/subcluster/orchestrator.toml"
-write_unit "imager"       "imager"       "/etc/subcluster/imager.toml"
-write_unit "netgate"      "netgate"      "/etc/subcluster/netgate.toml"
-write_unit "pxeboot"      "pxeboot"      "/etc/subcluster/pxeboot.toml"
+write_unit "hivebus"      "hivebus"      "/etc/hivebus/hivebus.toml"
+write_unit "netop"        "netop"        "/etc/hivebus/netop.toml"
+write_unit "orchestrator" "orchestrator" "/etc/hivebus/orchestrator.toml"
+write_unit "imager"       "imager"       "/etc/hivebus/imager.toml"
+write_unit "netgate"      "netgate"      "/etc/hivebus/netgate.toml"
+write_unit "pxeboot"      "pxeboot"      "/etc/hivebus/pxeboot.toml"
 
 systemctl daemon-reload
 
 # Seed node: pxeboot (DHCP) and seed-http must be up *before* agent nodes
 # are started so they can receive a DHCP lease and fetch seed.tar.gz.
-systemctl enable --now subcluster-seed-http
-systemctl enable --now subcluster-pxeboot
-systemctl enable --now subcluster-imager
-systemctl enable --now subcluster-hivebus
+systemctl enable --now hivebus-seed-http
+systemctl enable --now hivebus-pxeboot
+systemctl enable --now hivebus-imager
+systemctl enable --now hivebus-hivebus
 
-for svc in subcluster-seed-http subcluster-pxeboot subcluster-imager subcluster-hivebus; do
+for svc in hivebus-seed-http hivebus-pxeboot hivebus-imager hivebus-hivebus; do
     systemctl is-active --quiet "$svc"
 done
 

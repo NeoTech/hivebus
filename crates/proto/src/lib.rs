@@ -1,4 +1,4 @@
-//! Shared wire types for all subcluster daemons.
+//! Shared wire types for all hivebus daemons.
 //!
 //! Two protocols are defined here:
 //!
@@ -26,7 +26,7 @@ pub const DISCOVERY_PORT: u16 = 7777;
 pub const MULTICAST_ADDR: &str = "224.0.133.7";
 
 /// Unix socket base directory (must exist; created by init scripts).
-pub const SOCKET_DIR: &str = "/var/run/subcluster";
+pub const SOCKET_DIR: &str = "/var/run/hivebus";
 
 /// Marker byte that starts every control-plane frame.
 pub const CONTROL_FRAME_MARKER: u8 = 0x01;

@@ -181,7 +181,7 @@ async fn main() -> Result<()> {
         .init();
 
     let config_path = std::env::args().nth(1)
-        .unwrap_or_else(|| "/etc/subcluster/netop.toml".into());
+        .unwrap_or_else(|| "/etc/hivebus/netop.toml".into());
     let cfg: Config = if Path::new(&config_path).exists() {
         let raw = std::fs::read_to_string(&config_path)?;
         toml::from_str(&raw)?

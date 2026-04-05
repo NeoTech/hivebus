@@ -3,7 +3,7 @@ name = "hivectl"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "TUI cluster inspector for subcluster hivebus"
+description = "TUI cluster inspector for hivebus hivebus"
 
 [[bin]]
 name = "sc-hivectl"

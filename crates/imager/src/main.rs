@@ -48,7 +48,7 @@ struct Config {
     #[serde(default = "default_chunk_port")]
     chunk_port: u16,
 }
-fn default_store_dir() -> String { "/var/lib/subcluster/images".into() }
+fn default_store_dir() -> String { "/var/lib/hivebus/images".into() }
 fn default_chunk_port() -> u16 { 7779 }
 
 impl Default for Config {
@@ -215,7 +215,7 @@ async fn main() -> Result<()> {
         .init();
 
     let config_path = std::env::args().nth(1)
-        .unwrap_or_else(|| "/etc/subcluster/imager.toml".into());
+        .unwrap_or_else(|| "/etc/hivebus/imager.toml".into());
     let cfg = Arc::new(if Path::new(&config_path).exists() {
         let raw = std::fs::read_to_string(&config_path)?;
         toml::from_str::<Config>(&raw)?

@@ -1,8 +1,8 @@
-//! hivectl — TUI cluster inspector for subcluster hivebus.
+//! hivectl — TUI cluster inspector for hivebus hivebus.
 //!
 //! Usage:
 //!   sc-hivectl                              # connect to default socket
-//!   sc-hivectl /var/run/subcluster/hivebus.sock
+//!   sc-hivectl /var/run/hivebus/hivebus.sock
 //!
 //! Keys:
 //!   q / Ctrl-C   quit
@@ -39,7 +39,7 @@ use proto::{
 // Constants
 // ---------------------------------------------------------------------------
 
-const DEFAULT_SOCKET: &str = "/var/run/subcluster/hivebus.sock";
+const DEFAULT_SOCKET: &str = "/var/run/hivebus/hivebus.sock";
 const REFRESH_INTERVAL: Duration = Duration::from_secs(1);
 const SOCKET_TIMEOUT: Duration = Duration::from_secs(3);
 const POLL_INTERVAL: Duration = Duration::from_millis(100);
@@ -279,7 +279,7 @@ fn draw_header(f: &mut Frame, area: Rect, app: &App) {
     ]);
 
     let header = Paragraph::new(line)
-        .block(Block::default().borders(Borders::ALL).title(" subcluster hivectl "));
+        .block(Block::default().borders(Borders::ALL).title(" hivebus hivectl "));
     f.render_widget(header, area);
 }
 

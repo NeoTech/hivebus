@@ -41,11 +41,11 @@ test_binaries_installed() {
 }
 
 test_cargo_check() {
-    c node1 "cd /opt/subcluster && \$HOME/.cargo/bin/cargo check --workspace 2>&1" || return 1
+    c node1 "cd /opt/hivebus && \$HOME/.cargo/bin/cargo check --workspace 2>&1" || return 1
 }
 
 test_proto_unit_tests() {
-    c node1 "cd /opt/subcluster && \$HOME/.cargo/bin/cargo test -p proto --lib 2>&1" | grep -q "test result: ok"
+    c node1 "cd /opt/hivebus && \$HOME/.cargo/bin/cargo test -p proto --lib 2>&1" | grep -q "test result: ok"
 }
 
 test_cluster_network_reachability() {
@@ -60,7 +60,7 @@ test_seed_http_smoke() {
 }
 
 test_pxeboot_running_smoke() {
-    c node1 "systemctl is-active subcluster-pxeboot" >/dev/null
+    c node1 "systemctl is-active hivebus-pxeboot" >/dev/null
 }
 
 test_pxeboot_tftp_default_script_smoke() {
@@ -73,58 +73,58 @@ test_pxeboot_tftp_mac_script_smoke() {
 
 test_hivebus_running() {
     for node in node1 node2 node3; do
-        c "$node" "systemctl is-active subcluster-hivebus" >/dev/null || return 1
+        c "$node" "systemctl is-active hivebus-hivebus" >/dev/null || return 1
     done
 }
 
 test_hivebus_socket() {
-    c node1 "test -S /var/run/subcluster/hivebus.sock"
+    c node1 "test -S /var/run/hivebus/hivebus.sock"
 }
 
 test_hivebus_control_socket_smoke() {
-    c node1 "socat - UNIX-CONNECT:/var/run/subcluster/hivebus.sock" <<< "" 2>/dev/null || true
-    c node1 "test -S /var/run/subcluster/hivebus.sock"
+    c node1 "socat - UNIX-CONNECT:/var/run/hivebus/hivebus.sock" <<< "" 2>/dev/null || true
+    c node1 "test -S /var/run/hivebus/hivebus.sock"
 }
 
 test_hivebus_discovery_3nodes() {
     sleep 2
-    c node1 "journalctl -u subcluster-hivebus --no-pager -n 80" | grep -q '"node announced"'
+    c node1 "journalctl -u hivebus-hivebus --no-pager -n 80" | grep -q '"node announced"'
 }
 
 test_orchestrator_socket_startup_smoke() {
-    c node1 "sudo systemctl start subcluster-orchestrator" || true
+    c node1 "sudo systemctl start hivebus-orchestrator" || true
     sleep 1
-    c node1 "test -S /var/run/subcluster/orchestrator.sock"
+    c node1 "test -S /var/run/hivebus/orchestrator.sock"
 }
 
 test_netop_socket_startup_smoke() {
-    c node1 "sudo systemctl start subcluster-netop" || true
+    c node1 "sudo systemctl start hivebus-netop" || true
     sleep 1
-    c node1 "test -S /var/run/subcluster/netop.sock"
+    c node1 "test -S /var/run/hivebus/netop.sock"
 }
 
 test_imager_socket_startup_smoke() {
-    c node1 "sudo systemctl start subcluster-imager" || true
+    c node1 "sudo systemctl start hivebus-imager" || true
     sleep 1
-    c node1 "test -S /var/run/subcluster/imager.sock"
+    c node1 "test -S /var/run/hivebus/imager.sock"
 }
 
 test_netgate_socket_startup_smoke() {
-    c node1 "sudo systemctl start subcluster-netgate" || true
+    c node1 "sudo systemctl start hivebus-netgate" || true
     sleep 1
-    c node1 "test -S /var/run/subcluster/netgate.sock"
+    c node1 "test -S /var/run/hivebus/netgate.sock"
 }
 
 test_netgate_stub_honesty() {
-    c node1 "journalctl -u subcluster-netgate --no-pager -n 20" | grep -q 'stub'
+    c node1 "journalctl -u hivebus-netgate --no-pager -n 20" | grep -q 'stub'
 }
 
 test_netop_stub_honesty() {
-    c node1 "grep -q 'interface reconcile (stub)' /opt/subcluster/crates/netop/src/main.rs"
+    c node1 "grep -q 'interface reconcile (stub)' /opt/hivebus/crates/netop/src/main.rs"
 }
 
 echo "================================================================"
-echo "  subcluster smoke test suite"
+echo "  hivebus smoke test suite"
 echo "================================================================"
 echo ""
 
